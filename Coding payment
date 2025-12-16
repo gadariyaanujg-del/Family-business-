@@ -1,0 +1,135 @@
+<!DOCTYPE html><html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Payment Photo Editor</title>
+<style>
+body{margin:0;font-family:Arial;background:#111;color:#fff;overflow:hidden}
+.screen{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+input,button{padding:10px;margin:6px;width:220px}
+button{background:#222;color:#fff;border:1px solid #555;cursor:pointer}
+#editor{display:none;height:100vh;position:relative}
+#toolbar{position:fixed;top:0;left:0;right:0;background:#000;padding:6px;display:flex;gap:6px;z-index:20}
+#toolbar button{width:auto;padding:6px 10px;font-size:18px}
+canvas{touch-action:none;display:block;margin-top:50px}
+.mark{position:absolute;font-size:40px;cursor:pointer;user-select:none;touch-action:none}
+</style>
+</head>
+<body><div class="screen" id="loginScreen">
+<h2>Login</h2>
+<input id="username" placeholder="user1 / user2 / user3">
+<input id="password" type="password" placeholder="1234">
+<button id="loginBtn">Login</button>
+</div><div class="screen" id="pickerScreen" style="display:none">
+<h3>Photo Select</h3>
+<input type="file" accept="image/*" id="photoInput">
+</div><div id="editor">
+<div id="toolbar">
+<button data-tool="draw">✏️ Draw</button>
+<button data-text="✔️">✔️</button>
+<button data-text="✔✔️">✔✔️</button>
+<button data-text="💸">💸</button>
+<button data-text="🚫">🚫</button>
+<button data-text="🔄">🔄</button>
+<button id="eraser">🧹 Erase</button>
+<button id="undo">↩️ Undo</button>
+</div>
+<canvas id="canvas"></canvas>
+</div><script>
+// USERS
+// USERS (REAL)
+// USERS (REAL)
+const USERS={Anuj:'54321',Chetan:'54321',Jagpal:'54321'};
+const loginScreen=document.getElementById('loginScreen');
+const pickerScreen=document.getElementById('pickerScreen');
+const editor=document.getElementById('editor');
+const usernameEl=document.getElementById('username');
+const passwordEl=document.getElementById('password');
+const loginBtn=document.getElementById('loginBtn');
+const photoInput=document.getElementById('photoInput');
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let drawing=false,currentTool='draw';
+let undoStack=[];
+
+// LOGIN
+loginBtn.addEventListener('click',()=>{
+const u=usernameEl.value.trim(),p=passwordEl.value.trim();
+if(USERS[u]&&USERS[u]===p){loginScreen.style.display='none';pickerScreen.style.display='flex';}
+else alert('Username ya password galat')
+});
+
+// PHOTO LOAD
+photoInput.addEventListener('change',(e)=>{
+const file=e.target.files[0];
+if(!file)return;
+const img=new Image();
+img.onload=()=>{
+pickerScreen.style.display='none';editor.style.display='block';
+canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+ctx.drawImage(img,0,50,canvas.width,canvas.height-50);
+saveUndo();
+};
+img.src=URL.createObjectURL(file);
+});
+
+// SAVE UNDO
+function saveUndo(){
+undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
+if(undoStack.length>20)undoStack.shift();
+}
+
+// DRAWING
+canvas.addEventListener('pointerdown',e=>{if(currentTool==='draw'){drawing=true}});
+canvas.addEventListener('pointerup',e=>{if(currentTool==='draw')drawing=false;saveUndo();});
+canvas.addEventListener('pointermove',e=>{
+if(!drawing||currentTool!=='draw')return;
+ctx.fillStyle='darkblue';ctx.fillRect(e.offsetX,e.offsetY,4,4);
+});
+
+// TOOLBAR CLICK
+const toolbar=document.getElementById('toolbar');
+toolbar.addEventListener('click',e=>{
+const text=e.target.getAttribute('data-text');
+if(text){
+const mark=document.createElement('div');
+mark.className='mark';mark.textContent=text;
+mark.style.left='50px';mark.style.top='100px';
+mark.style.fontSize='40px';
+editor.appendChild(mark);
+
+// DRAG MARKS
+mark.addEventListener('pointerdown',function(ev){
+mark.setPointerCapture(ev.pointerId);
+let startX=ev.clientX-parseInt(mark.style.left);
+let startY=ev.clientY-parseInt(mark.style.top);
+function move(e){
+mark.style.left=e.clientX-startX+'px';
+mark.style.top=e.clientY-startY+'px';
+}
+function up(e){mark.releasePointerCapture(ev.pointerId);mark.removeEventListener('pointermove',move);mark.removeEventListener('pointerup',up);}
+mark.addEventListener('pointermove',move);
+mark.addEventListener('pointerup',up);
+});
+
+// RESIZE MARKS
+mark.addEventListener('wheel',e=>{
+let size=parseInt(mark.style.fontSize);
+size+=e.deltaY<0?2:-2;
+size=Math.max(10,Math.min(200,size));
+mark.style.fontSize=size+'px';
+e.preventDefault();
+});
+}
+});
+
+// TOOL SELECT
+document.getElementById('eraser').addEventListener('click',()=>currentTool='erase');
+document.querySelector('[data-tool]').addEventListener('click',()=>currentTool='draw');
+
+// UNDO
+document.getElementById('undo').addEventListener('click',()=>{
+if(undoStack.length>1){undoStack.pop();ctx.putImageData(undoStack[undoStack.length-1],0,0);}
+});
+</script></body>
+</html>
